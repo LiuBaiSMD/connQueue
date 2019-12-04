@@ -6,11 +6,10 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/micro/go-micro/util/log"
 	"heartbeat_demo/proto"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
-	"time"
-	"math/rand"
 )
 
 const (
@@ -78,35 +77,11 @@ func (this *Client) SendMessage() error {
 			log.Logf("your input : %v",data)
 		}
 	}()
-	go func(){
-		d := ""
-		for{
-			select {
-			case d =<- reader:
-				log.Logf("----->send your input")
-				err1 :=conn.WriteMessage(websocket.BinaryMessage, MsgAssemblerReader(d))
-				if err1 != nil {
-					log.Logf("write close:", err1)
-				} else {
-					log.Logf("send input over!")
-				}
-			}
-
-		}
-	}()
-	ticker := time.NewTicker(time.Second*10)
-	defer ticker.Stop()
 	d := ""
 	for {
 		select {
 		case <-done:
 			return nil
-		case <-ticker.C:
-			err := conn.WriteMessage(websocket.BinaryMessage, MsgAssembler())
-			if err != nil {
-				log.Fatalf("write:", err)
-				return nil
-			}
 		case d=<-reader:
 			log.Logf("----->send your input")
 			err1 :=conn.WriteMessage(websocket.BinaryMessage, MsgAssemblerReader(d))

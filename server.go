@@ -5,7 +5,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/micro/go-micro/web"
-	"time"
 	"heartbeat_demo/proto"
 	"log"
 	"net/http"
@@ -26,40 +25,6 @@ var (
 
 var conns []*websocket.Conn
 
-func asumeConn(){
-	time.Sleep(time.Second*10)
-	for {
-		if len(conns) > 0{
-			c := conns[0]
-			conns = conns[1:]
-			sendTest(c)
-		}
-	}
-}
-
-func sendTest(c *websocket.Conn){
-	//data := ""
-	reader := make(chan string ,1)
-	reader <- "我来测试一下----->"
-	go func(){
-		d := ""
-		for{
-			select {
-			case d =<- reader:
-				log.Printf("----->send your input")
-				err1 :=c.WriteMessage(websocket.BinaryMessage, MsgAssemblerReader(d))
-				if err1 != nil {
-					log.Printf("write close:", err1)
-				} else {
-					log.Printf("send input over!")
-				}
-				c.Close()
-			}
-
-		}
-	}()
-}
-
 func main() {
 	// New web service
 
@@ -73,7 +38,6 @@ func main() {
 	}
 	// websocket 连接接口 web.name注册根据.分割路由路径，所以注册的路径要和name对应上
 	service.HandleFunc("/heartbeat", login)
-	go asumeConn()
 	if err := service.Run(); err != nil {
 		log.Fatal("Run: ", err)
 	}
@@ -115,7 +79,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 		}
 	}()
-	for {
+	for { 				//读消息，进行阻塞，
 		_, buffer, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("read:", err)
@@ -126,22 +90,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("recv userId=%d MsgId=%d Data=%s", clientRes.UserId, clientRes.MsgId, clientRes.Data)
 	}
-}
-
-// 组装pb的接口
-func MsgAssembler() []byte {
-	msgSeqId += 1
-	retPb := &heartbeat.Request{
-		ClientId: CLIENTID,
-		UserId:   USERID,
-		MsgId:    msgSeqId,
-		Data:     "server handshake:",
-	}
-	byteData, err := proto.Marshal(retPb)
-	if err != nil {
-		log.Fatal("pb marshaling error: ", err)
-	}
-	return byteData
 }
 
 func MsgAssemblerReader(data string) []byte {
