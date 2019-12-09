@@ -1,4 +1,4 @@
-module heartbeat_demo
+module connQueue
 
 go 1.12
 

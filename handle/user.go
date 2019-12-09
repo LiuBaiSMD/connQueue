@@ -1,11 +1,17 @@
-package main
+/*
+auth:   wuxun
+date:   2019-12-09 20:39
+mail:   lbwuxun@qq.com
+desc:   how to use or use for what
+*/
 
+package handle
 import (
+	"connQueue/conns"
 	"fmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
-	"github.com/micro/go-micro/web"
-	"heartbeat_demo/proto"
+	"connQueue/proto"
 	"log"
 	"net/http"
 )
@@ -14,6 +20,7 @@ var upGrader = websocket.Upgrader{
 	//对请求头进行检查
 	//CheckOrigin: func(r *http.Request) bool { return true },
 }
+
 var (
 	clientRes heartbeat.Request
 	serverRsp heartbeat.Response
@@ -23,35 +30,16 @@ var (
 
 )
 
-var conns []*websocket.Conn
-
-func main() {
-	// New web service
-
-	service := web.NewService(
-		web.Name("go.micro.web.heartbeat"),
-		web.Address(":8080"),
-	)
-
-	if err := service.Init(); err != nil {
-		log.Fatal("Init", err)
-	}
-	// websocket 连接接口 web.name注册根据.分割路由路径，所以注册的路径要和name对应上
-	service.HandleFunc("/heartbeat", login)
-	if err := service.Run(); err != nil {
-		log.Fatal("Run: ", err)
-	}
-}
-
-func login(w http.ResponseWriter, r *http.Request) {
+func Login(w http.ResponseWriter, r *http.Request) {
 	//
 	conn, err := upGrader.Upgrade(w, r, nil)
-	conns = append(conns, conn)
 	if err != nil {
 		log.Printf("upgrade: %s", err)
 		return
 	}
-
+	connID := conns.GetLastestConnID()
+	connClient := conns.NewClient(9999, conn, connID)
+	conns.Push(connID,connClient)
 	defer conn.Close()
 	reader := make(chan string ,1)
 	data := ""

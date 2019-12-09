@@ -5,7 +5,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/micro/go-micro/util/log"
-	"heartbeat_demo/proto"
+	"connQueue/proto"
 	"math/rand"
 	"net/http"
 	"os"
@@ -106,6 +106,15 @@ func (this *Client) SendMessage() error {
 
 
 func main() {
+	var count int
+	for{
+		fmt.Println("count: ", count)
+		if count>1000{
+			break
+		}
+		count ++
+		go msgHandler()
+	}
 	msgHandler()
 }
 
