@@ -2,7 +2,7 @@
 auth:   wuxun
 date:   2019-12-09 19:54
 mail:   lbwuxun@qq.com
-desc:   how to use or use for what
+desc:   用户的连接以及用户请求参数
 */
 
 package conns
@@ -12,8 +12,8 @@ import (
 )
 
 type ClientConn struct{
-	userId int
-	connID int
+	userId int				`"用户id"`
+	connID int				`本次处理连接的id`
 	conn *websocket.Conn
 }
 func NewClient(uId int, con *websocket.Conn, cId int)  *ClientConn{

@@ -30,12 +30,8 @@ func main() {
 		web.Name("go.micro.web.heartbeat"),
 		web.Address(":8080"),
 	)
-	go func(){
-		for{
-			connID, conn := conns.Pop()
-			fmt.Println("connClient: ", connID, conn)
-		}
-	}()
+	//测试连接处理接口
+	go testPopConn()
 	if err := service.Init(); err != nil {
 		log.Fatal("Init", err)
 	}
@@ -43,5 +39,28 @@ func main() {
 	service.HandleFunc("/heartbeat", handle.Login)
 	if err := service.Run(); err != nil {
 		log.Fatal("Run: ", err)
+	}
+}
+
+func testPopConn(){
+	max := 0
+	l := 0
+	for{
+		connID, connClientItf := conns.Pop()
+		if connClientItf == nil{
+			continue
+		}
+		connClient := connClientItf
+		conn := connClient.GetConn()
+		l = conns.LenthConn()
+		if l > max{
+			max = l
+		}
+		fmt.Println("connClient: ", l, max, connID, connClient.GetConnID(), connClient.GetUserID(), connClient)
+		handle.GetToken(connClient)
+		err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "9999"))
+		if err != nil {
+			log.Println("write close:", err)
+		}
 	}
 }

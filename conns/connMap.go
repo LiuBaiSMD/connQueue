@@ -15,30 +15,51 @@ type ConnMap struct {
 	connChan chan int
 	connMap  sync.Map
 	curConnID int
+	connCMap chan *ClientConn
 }
 
 var connIDCreator chan int
 var cMap ConnMap
 
 func init() {
+	cMap.connCMap = make(chan *ClientConn, 10000)
 	cMap.connChan = make(chan int, 10000)
 	connIDCreator = make(chan int, 1)
 	cMap.curConnID = -1
 	connIDCreator <- 1
+
 }
 
-func Push(connID int, connValue interface{}){
+func Push(connID int, connValue *ClientConn){
+	cMap.connChan <- connID
+	cMap.connCMap <- connValue
+}
+
+func PushChan(connID int, connValue interface{}){
 	cMap.connMap.Store(connID, connValue)
 	cMap.connChan <- connID
 }
 
-func Pop()(int, interface{}){
+func Pop()(int, *ClientConn){
 	connID := <-cMap.connChan
 	cMap.curConnID = connID
-	connValue, isOK := cMap.connMap.Load(connID)
+	select {
+		case connValue := <- cMap.connCMap:
+			return connID, connValue
+		default:
+			return -1, nil
+	}
+}
+
+func PopChan()(int, *ClientConn){
+	connID := <-cMap.connChan
+	cMap.curConnID = connID
+	connValueITF, isOK := cMap.connMap.Load(connID)
 	if !isOK{
 		return -1, nil
 	}
+	Delete(connID)
+	connValue := connValueITF.(*ClientConn)
 	return connID, connValue
 }
 

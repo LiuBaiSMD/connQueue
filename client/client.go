@@ -1,21 +1,23 @@
 package main
 
 import (
-	"fmt"
+	"connQueue/proto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/micro/go-micro/util/log"
-	"connQueue/proto"
-	"math/rand"
+	"time"
 	"net/http"
 	"os"
 	"os/signal"
+	"fmt"
 )
 
 const (
 	CLIENTID = 10
 	USERID   = 10001
 )
+
+var userIDCreator chan int
 
 var (
 	clientRes heartbeat.Request
@@ -28,6 +30,26 @@ type Client struct {
 	Host string
 	Path string
 }
+
+func main() {
+	userIDCreator = make(chan int, 1)
+	userIDCreator <- 10001
+	var count int
+	go func(){
+		for{
+			fmt.Println("count: ", count)
+			//if count>100{
+			//	break
+			//}
+			count ++
+			time.Sleep(time.Microsecond * 10)
+			go msgHandler()
+	}
+	}()
+	time.Sleep(time.Second*10)
+	log.Log("----------->over")
+}
+
 
 func NewWebsocketClient(host, path string) *Client {
 	return &Client{
@@ -42,7 +64,9 @@ func (this *Client) SendMessage() error {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	dialer := &websocket.Dialer{}
+	dialer := &websocket.Dialer{
+		HandshakeTimeout:time.Second * 10,
+	}
 	conn, _, err := dialer.Dial("ws://"+this.Host+this.Path, http.Header{})
 	if err != nil {
 		log.Fatal(err)
@@ -57,7 +81,7 @@ func (this *Client) SendMessage() error {
 		for {
 			_, message, err := conn.ReadMessage()
 			if err != nil {
-				log.Fatalf("read:", err)
+				log.Log("read:", err)
 				return
 			}
 			if err := proto.Unmarshal(message, &clientRes); err != nil {
@@ -67,28 +91,19 @@ func (this *Client) SendMessage() error {
 		}
 	}()
 	//进行发送输入功能
-	reader:= make(chan string )
-	data := ""
-	go func(){
-		for{
-			log.Logf("please input: 	")
-			fmt.Scanf("%s",&data)
-			reader <- data
-			log.Logf("your input : %v",data)
-		}
-	}()
+	reader:= make(chan string, 1)
+	reader <- "10001"
 	d := ""
 	for {
 		select {
 		case <-done:
 			return nil
 		case d=<-reader:
-			log.Logf("----->send your input")
 			err1 :=conn.WriteMessage(websocket.BinaryMessage, MsgAssemblerReader(d))
 			if err1 != nil {
 				log.Logf("write close:", err1)
 			} else {
-				log.Logf("send input over!")
+				continue
 			}
 		case <-interrupt:
 			// 发送 CloseMessage 类型的消息来通知服务器关闭连接，不然会报错CloseAbnormalClosure 1006错误
@@ -104,35 +119,13 @@ func (this *Client) SendMessage() error {
 	}
 }
 
-
-func main() {
-	var count int
-	for{
-		fmt.Println("count: ", count)
-		if count>1000{
-			break
-		}
-		count ++
-		go msgHandler()
-	}
-	msgHandler()
+func getLatestUserID()uint64{
+	lUID := <-userIDCreator
+	nextUID := lUID+1
+	userIDCreator <- nextUID
+	return uint64(lUID)
 }
 
-// 组装pb的接口
-func MsgAssembler() []byte {
-	msgSeqId += 1
-	retPb := &heartbeat.Request{
-		ClientId: CLIENTID,
-		UserId:   uint64(rand.Intn(10000)),
-		MsgId:    msgSeqId,
-		Data:     "handshake:",
-	}
-	byteData, err := proto.Marshal(retPb)
-	if err != nil {
-		log.Fatal("pb marshaling error: ", err)
-	}
-	return byteData
-}
 func msgHandler() {
 	clientWrapper := NewWebsocketClient(wsHost, wsPath)
 	if err := clientWrapper.SendMessage(); err != nil {
@@ -144,7 +137,7 @@ func MsgAssemblerReader(data string) []byte {
 	msgSeqId += 1
 	retPb := &heartbeat.Request{
 		ClientId: CLIENTID,
-		UserId:   USERID,
+		UserId:   getLatestUserID(),
 		MsgId:    msgSeqId,
 		Data:     data,
 	}
