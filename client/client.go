@@ -42,7 +42,7 @@ func main() {
 			//	break
 			//}
 			count ++
-			time.Sleep(time.Microsecond * 10)
+			time.Sleep(time.Microsecond * 1)
 			go msgHandler()
 	}
 	}()

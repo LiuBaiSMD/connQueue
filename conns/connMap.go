@@ -30,17 +30,17 @@ func init() {
 
 }
 
-func Push(connID int, connValue *ClientConn){
+func PushChan(connID int, connValue *ClientConn){
 	cMap.connChan <- connID
 	cMap.connCMap <- connValue
 }
 
-func PushChan(connID int, connValue interface{}){
+func Push(connID int, connValue interface{}){
 	cMap.connMap.Store(connID, connValue)
 	cMap.connChan <- connID
 }
 
-func Pop()(int, *ClientConn){
+func PopChan()(int, *ClientConn){
 	connID := <-cMap.connChan
 	cMap.curConnID = connID
 	select {
@@ -51,7 +51,7 @@ func Pop()(int, *ClientConn){
 	}
 }
 
-func PopChan()(int, *ClientConn){
+func Pop()(int, *ClientConn){
 	connID := <-cMap.connChan
 	cMap.curConnID = connID
 	connValueITF, isOK := cMap.connMap.Load(connID)
@@ -65,6 +65,10 @@ func PopChan()(int, *ClientConn){
 
 func Delete(connID int){
 	cMap.connMap.Delete(connID)
+}
+
+func LenthConnChan()int{
+	return len(cMap.connCMap)
 }
 
 func LenthConn()int{
